@@ -1,0 +1,155 @@
+<script>
+    const modeSelection = document.getElementById('mode-selection');
+    const timerSelection = document.getElementById('timer-selection');
+    const drawingApp = document.getElementById('drawing-app');
+    const timerContainer = document.getElementById('timer-container');
+    const timerElement = document.getElementById('timer');
+
+    let timer;
+    let timeLeft = 0;
+    let isDrawingEnabled = true;
+
+    function selectMode(mode) {
+        modeSelection.style.display = 'none';
+        if (mode === 'withTimer') {
+            timerSelection.style.display = 'block';
+        } else {
+            drawingApp.style.display = 'block';
+            redrawCanvas();
+        }
+    }
+
+    function selectTime(time) {
+        timerSelection.style.display = 'none';
+        drawingApp.style.display = 'block';
+        timerContainer.style.display = 'block';
+        timeLeft = time;
+        updateTimerDisplay();
+
+        timer = setInterval(function() {
+            timeLeft--;
+            updateTimerDisplay();
+
+            if (timeLeft === 0) {
+                clearInterval(timer);
+                disableDrawing();
+            }
+        }, 1000);
+        redrawCanvas();
+    }
+
+    function updateTimerDisplay() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+    function disableDrawing() {
+        isDrawingEnabled = false;
+    }
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let tool = 'brush';
+    let brushSize = 5;
+    let color = '#000000';
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    function changeTool(selectedTool) {
+        tool = selectedTool;
+    }
+
+    function redrawCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const img = new Image();
+        img.onload = function() {
+            ctx.drawImage(img, 0, 0);
+        };
+        img.src = '/static/modified_image.png?' + new Date().getTime();
+
+        canvas.addEventListener('mousedown', function(event) {
+            if (isDrawingEnabled && event.button === 0) { // Проверка, что нажата левая кнопка мыши
+                startDrawing(event);
+            }
+        });
+        canvas.addEventListener('mousemove', function(event) {
+            if (isDrawingEnabled && isDrawing && event.button === 0) { // Проверка, что нажата левая кнопка мыши
+                drawOnCanvas(event);
+            }
+        });
+        canvas.addEventListener('mouseup', function(event) {
+            if (isDrawingEnabled && event.button === 0) { // Проверка, что нажата левая кнопка мыши
+                stopDrawing(event);
+            }
+        });
+        canvas.addEventListener('mouseout', function(event) {
+            if (isDrawingEnabled && event.button === 0) { // Проверка, что нажата левая кнопка мыши
+                stopDrawing(event);
+            }
+        });
+    }
+
+    function getMousePosition(event) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top
+        };
+    }
+
+    function startDrawing(event) {
+        isDrawing = true;
+        [lastX, lastY] = [event.offsetX, event.offsetY];
+    }
+
+    function stopDrawing() {
+        isDrawing = false;
+    }
+
+    function drawOnCanvas(event) {
+        if (!isDrawing) return;
+
+        const currentX = event.offsetX;
+        const currentY = event.offsetY;
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = brushSize;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        if (tool === 'brush') {
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(currentX, currentY);
+            ctx.stroke();
+        } else if (tool === 'eraser') {
+            ctx.clearRect(currentX - brushSize, currentY - brushSize, brushSize * 2, brushSize * 2);
+        }
+
+        [lastX, lastY] = [currentX, currentY];
+    }
+
+    function saveCanvas() {
+        const dataURL = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = dataURL;
+        link.download = 'modified_image.png';
+        link.click();
+    }
+
+    function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    const brushSizeInput = document.getElementById('brush-size');
+    brushSizeInput.addEventListener('change', (event) => {
+        brushSize = parseInt(event.target.value);
+    });
+
+    const colorInput = document.getElementById('color');
+    colorInput.addEventListener('change', (event) => {
+        color = event.target.value;
+    });
+</script>
+{% endblock %}
